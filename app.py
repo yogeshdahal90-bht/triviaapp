@@ -1,56 +1,61 @@
 import streamlit as st
 import pandas as pd
 
-# Load data - assuming no header row in CSV
+# Load data
 df = pd.read_csv("questions.csv", names=["Q", "A", "B", "C", "D", "Link"])
 
 st.title("Trivia Quest 🧠")
 
-# Initialize session state
 if 'count' not in st.session_state:
     st.session_state.count = 0
-if 'answered' not in st.session_state:
-    st.session_state.answered = False
 
-# Stop if we run out of questions
+# Check if quiz is over
 if st.session_state.count >= len(df):
-    st.success("You've finished the quiz!")
-    if st.button("Restart"):
+    st.balloons()
+    st.success("Quiz Complete!")
+    if st.button("Restart Quiz"):
         st.session_state.count = 0
         st.rerun()
     st.stop()
 
 row = df.iloc[st.session_state.count]
 
-# Clean the options (remove quotes for display)
-raw_options = [row.A, row.B, row.C, row.D]
-clean_options = [opt.strip('"') for opt in raw_options]
+# CLEANING: This handles spaces AND quotes perfectly
+raw_options = [str(row.A), str(row.B), str(row.C), str(row.D)]
+clean_options = [opt.strip().strip('"') for opt in raw_options]
 
 st.write(f"### Question {st.session_state.count + 1}")
-st.write(row.Q)
+st.subheader(row.Q)
 
-# The Radio button - we add an empty index so nothing is pre-selected
+# UI for selection
 selection = st.radio(
-    "Choose your answer:",
+    "Select an option:",
     clean_options,
     index=None,
-    key=f"q_{st.session_state.count}" # Unique key per question
+    key=f"radio_{st.session_state.count}"
 )
 
-# Logic: As soon as they select something
+# Create two columns for the buttons
+col1, col2 = st.columns([1, 4])
+
+with col1:
+    if st.button("Skip ⏭️"):
+        st.session_state.count += 1
+        st.rerun()
+
+# Logic when an answer is chosen
 if selection:
-    # Find if the raw version of their selection had quotes
-    actual_selection_raw = raw_options[clean_options.index(selection)]
+    # Find the original raw string to check for the " " 
+    selected_index = clean_options.index(selection)
+    was_correct = '"' in raw_options[selected_index]
     
-    if '"' in actual_selection_raw:
+    if was_correct:
         st.success("Correct! 🎉")
     else:
-        # Find the correct one to show them
-        correct_answer = next(opt.strip('"') for opt in raw_options if '"' in opt)
-        st.error(f"Not quite. The correct answer was: {correct_answer}")
-
-    # Show "Next" button immediately after selection
+        # Find which one was correct to show the user
+        correct_text = next(opt.strip().strip('"') for opt in raw_options if '"' in opt)
+        st.error(f"Wrong. The correct answer was: {correct_text}")
+    
     if st.button("Next Question →"):
         st.session_state.count += 1
-        st.session_state.answered = False
         st.rerun()
